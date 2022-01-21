@@ -1,0 +1,906 @@
+version: 2.1
+
+###
+### Executors ###
+###
+
+executors:
+  # This executor's Docker image contains all the tools required to build
+  # this repo (dotnet, openjdk, ruby, node etc). We use it for
+  # jobs that require a combination of those tools. For other jobs we use
+  # the circleci images, as they are typically cached more widely around
+  # the build nodes (faster builds).
+  docker-cucumber-build:
+    docker:
+      - image: cucumber/cucumber-build:0.11.0
+    working_directory: ~/cucumber
+    environment:
+      # nvm, node and npm are installed locally rather globally.
+      # this avoids issues when using npm link
+      # to make this work nvm must be configured for each shell
+      BASH_ENV: ~/.nvm/nvm.sh
+  # Go
+  docker-circleci-golang:
+    docker:
+      - image: circleci/golang:1.17
+    working_directory: ~/cucumber
+
+  # Node.js
+  docker-circleci-node-12:
+    docker:
+      - image: circleci/node:12
+    working_directory: ~/cucumber
+  docker-circleci-node-14:
+    docker:
+      - image: circleci/node:14
+    working_directory: ~/cucumber
+  docker-circleci-node-16:
+    docker:
+      - image: circleci/node:16
+    working_directory: ~/cucumber
+
+  # Ruby
+  docker-circleci-ruby-23:
+    docker:
+      - image: circleci/ruby:2.3
+    working_directory: ~/cucumber
+  docker-circleci-ruby-24:
+    docker:
+      - image: circleci/ruby:2.4
+    working_directory: ~/cucumber
+  docker-circleci-ruby-25:
+    docker:
+      - image: circleci/ruby:2.5
+    working_directory: ~/cucumber
+  docker-circleci-ruby-26:
+    docker:
+      - image: circleci/ruby:2.6
+    working_directory: ~/cucumber
+  # Java
+  docker-circleci-openjdk:
+    docker:
+      - image: circleci/openjdk:11
+    working_directory: ~/cucumber
+  # Python
+  docker-circleci-python:
+    docker:
+      - image: cimg/python:3.10.2
+    working_directory: ~/cucumber
+###
+### Jobs ###
+###
+
+jobs:
+  build-serial:
+    executor: docker-cucumber-build
+    steps:
+      - checkout
+      - run:
+          name: everything
+          command: make ci
+
+  prepare-parallel:
+    executor: docker-cucumber-build
+    steps:
+      - checkout
+      - run:
+          name: npm ci && npm run build
+          # We run `npm run build` (`tsc`) as well because it is needed to
+          # make storybook work. Our storybook setup is not (yet) able to
+          # pick up .ts files - all code needs to be transpiled first.
+          command: |
+            npm install --global npm@7
+            npm ci
+            npm run build
+      - persist_to_workspace:
+          root: ~/cucumber
+          paths:
+            - '*'
+
+  ### Go
+
+  messages-go:
+    executor: docker-cucumber-build
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: messages/go
+          command: |
+            cd messages/go
+            make
+
+  gherkin-go:
+    executor: docker-circleci-golang
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: gherkin/go
+          command: |
+            cd gherkin/go
+            make
+
+  demo-formatter-go:
+    executor: docker-cucumber-build
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: demo-formatter/go
+          command: |
+            cd demo-formatter/go
+            make
+
+  json-formatter-go:
+    executor: docker-cucumber-build
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: json-formatter/go
+          command: |
+            cd json-formatter/go
+            make
+
+  ### JavaScript
+
+  message-streams-javascript:
+    executor: docker-circleci-node-14
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: message-streams/javascript
+          command: |
+            sudo npm install --global npm@7
+            cd message-streams/javascript
+            make
+
+  messages-javascript:
+    executor: docker-circleci-node-14
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: messages/javascript
+          command: |
+            sudo npm install --global npm@7
+            cd messages/javascript
+            make
+
+  gherkin-streams-javascript:
+    executor: docker-circleci-node-14
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: gherkin-streams/javascript
+          command: |
+            sudo npm install --global npm@7
+            cd gherkin-streams/javascript
+            make
+
+  gherkin-javascript-node-12:
+    executor: docker-circleci-node-12
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: gherkin/javascript
+          command: |
+            sudo npm install --global npm@7
+            cd gherkin/javascript
+            make
+
+  gherkin-javascript-node-14:
+    executor: docker-circleci-node-14
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: gherkin/javascript
+          command: |
+            sudo npm install --global npm@7
+            cd gherkin/javascript
+            make
+
+  gherkin-javascript-node-16:
+    executor: docker-circleci-node-16
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: gherkin/javascript
+          command: |
+            sudo npm install --global npm@7
+            cd gherkin/javascript
+            make
+
+  gherkin-utils-javascript:
+    executor: docker-circleci-node-14
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: gherkin-utils/javascript
+          command: |
+            sudo npm install --global npm@7
+            cd gherkin-utils/javascript
+            make
+
+  fake-cucumber-javascript:
+    executor: docker-circleci-node-14
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: fake-cucumber/javascript
+          command: |
+            sudo npm install --global npm@7
+            cd fake-cucumber/javascript
+            make
+
+  compatibility-kit-javascript:
+    executor: docker-circleci-node-14
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: compatibility-kit/javascript
+          command: |
+            sudo npm install --global npm@7
+            cd compatibility-kit/javascript
+            make
+
+  react-javascript:
+    executor: docker-circleci-node-14
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: react/javascript
+          command: |
+            sudo npm install --global npm@7
+            cd react/javascript
+            make
+
+  html-formatter-javascript:
+    executor: docker-circleci-node-14
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: Install Headless Chrome dependencies
+          command: |
+            sudo apt update && \
+            sudo apt-get install --assume-yes --quiet \
+            gconf-service libasound2 libatk1.0-0 libatk-bridge2.0-0 libc6 libcairo2 libcups2 libdbus-1-3 \
+            libexpat1 libfontconfig1 libgcc1 libgconf-2-4 libgdk-pixbuf2.0-0 libglib2.0-0 libgtk-3-0 libnspr4 \
+            libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 \
+            libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 ca-certificates \
+            fonts-liberation libappindicator1 libnss3 lsb-release xdg-utils wget
+      - run:
+          name: html-formatter/javascript
+          command: |
+            sudo npm install --global npm@7
+            cd html-formatter/javascript
+            make
+      - persist_to_workspace:
+          root: ~/cucumber
+          paths:
+            - html-formatter/javascript/dist
+
+  json-formatter-javascript-testdata:
+    executor: docker-circleci-node-14
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: json-formatter/javascript-testdata
+          command: |
+            sudo npm install --global npm@7
+            cd json-formatter/javascript-testdata
+            make
+      - persist_to_workspace:
+          root: ~/cucumber
+          paths:
+            - json-formatter/javascript-testdata/features
+
+  json-to-messages-javascript:
+    executor: docker-circleci-node-14
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: json-to-messages/javascript
+          command: |
+            sudo npm install --global npm@7
+            cd json-to-messages/javascript
+            make
+
+  json-to-messages-javascript-testdata:
+    executor: docker-circleci-node-14
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: json-to-messages/javascript-testdata
+          command: |
+            sudo npm install --global npm@7
+            cd json-to-messages/javascript-testdata
+            make
+      - persist_to_workspace:
+          root: ~/cucumber
+          paths:
+            - json-to-messages/javascript-testdata/acceptance
+
+  query-javascript:
+    executor: docker-circleci-node-14
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: query/javascript
+          command: |
+            sudo npm install --global npm@7
+            cd query/javascript
+            make
+
+  ### Ruby
+
+  messages-ruby:
+    executor: docker-cucumber-build
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: messages/ruby
+          command: |
+            cd messages/ruby
+            make
+      - persist_to_workspace:
+          root: ~/cucumber
+          paths:
+            - messages/ruby
+
+  gherkin-ruby-23:
+    executor: docker-circleci-ruby-23
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: gherkin/ruby
+          command: |
+            cd gherkin/ruby
+            make
+
+  gherkin-ruby-24:
+    executor: docker-circleci-ruby-24
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: gherkin/ruby
+          command: |
+            cd gherkin/ruby
+            make
+
+  gherkin-ruby-25:
+    executor: docker-circleci-ruby-25
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: gherkin/ruby
+          command: |
+            cd gherkin/ruby
+            make
+
+  gherkin-ruby-26:
+    executor: docker-circleci-ruby-26
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: gherkin/ruby
+          command: |
+            cd gherkin/ruby
+            make
+
+  json-formatter-ruby-testdata:
+    executor: docker-circleci-ruby-26
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: json-formatter/ruby-testdata
+          command: |
+            cd json-formatter/ruby-testdata
+            make
+      - persist_to_workspace:
+          root: ~/cucumber
+          paths:
+            - json-formatter/ruby-testdata
+
+  compatibility-kit-ruby:
+    executor: docker-cucumber-build
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: compatibility-kit/ruby
+          command: |
+            cd compatibility-kit/ruby
+            CUCUMBER_USE_RELEASED_GEMS=1 make
+      - persist_to_workspace:
+          root: ~/cucumber
+          paths:
+            - compatibility-kit/ruby/features
+
+  demo-formatter-ruby:
+    executor: docker-cucumber-build
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: demo-formatter/ruby
+          command: |
+            cd demo-formatter/ruby
+            make
+
+  html-formatter-ruby:
+    executor: docker-circleci-ruby-26
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: html-formatter/ruby
+          command: |
+            cd html-formatter/ruby
+            make
+
+  json-to-messages-ruby-testdata:
+    executor: docker-circleci-ruby-26
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: json-to-messages/ruby-testdata
+          command: |
+            cd json-to-messages/ruby-testdata
+            make
+      - persist_to_workspace:
+          root: ~/cucumber
+          paths:
+            - json-to-messages/ruby-testdata/features
+            - json-to-messages/ruby-testdata/acceptance
+
+  ### Java
+
+  messages-java:
+    executor: docker-cucumber-build
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - attach_workspace:
+          at: '~/.m2/repository'
+      - run:
+          name: messages/java
+          command: |
+            cd messages/java
+            make
+      - persist_to_workspace:
+          root: '~/.m2/repository'
+          paths:
+            - 'io/cucumber/messages'
+
+  gherkin-java:
+    executor: docker-circleci-openjdk
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - attach_workspace:
+          at: '~/.m2/repository'
+      - run:
+          name: gherkin/java
+          command: |
+            cd gherkin/java
+            make
+      - persist_to_workspace:
+          root: '~/.m2/repository'
+          paths:
+            - 'io/cucumber/gherkin'
+
+  config-java:
+    executor: docker-circleci-openjdk
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - attach_workspace:
+          at: '~/.m2/repository'
+      - run:
+          name: config-java
+          command: |
+            cd config/java
+            make
+      - persist_to_workspace:
+          root: '~/.m2/repository'
+          paths:
+            - 'io/cucumber/config'
+
+  html-formatter-java:
+    executor: docker-circleci-openjdk
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - attach_workspace:
+          at: '~/.m2/repository'
+      - run:
+          name: html-formatter
+          command: |
+            cd html-formatter/java
+            make
+      - persist_to_workspace:
+          root: '~/.m2/repository'
+          paths:
+            - 'io/cucumber/html-formatter'
+
+  json-to-messages-java-testdata:
+    executor: docker-circleci-openjdk
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: json-to-messages/java-testdata
+          command: |
+            cd json-to-messages/java-testdata
+            make
+      - persist_to_workspace:
+          root: ~/cucumber
+          paths:
+            - json-to-messages/java-testdata/acceptance
+
+  ### .NET
+
+  messages-dotnet:
+    executor: docker-cucumber-build
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: messages/dotnet
+          command: |
+            cd messages/dotnet
+            make
+
+  gherkin-dotnet:
+    executor: docker-cucumber-build
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: gherkin/dotnet
+          command: |
+            cd gherkin/dotnet
+            make
+
+  ### Perl
+
+  gherkin-perl:
+    executor: docker-cucumber-build
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: gherkin/perl
+          command: |
+            cd gherkin/perl
+            make
+
+  messages-perl:
+    executor: docker-cucumber-build
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: messages/perl
+          command: |
+            cd messages/perl
+            make
+
+  ### Python
+
+  json-to-messages-python-testdata:
+    executor: docker-circleci-python
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: json-to-messages/python-testdata
+          command: |
+            cd json-to-messages/python-testdata
+            make default
+      - persist_to_workspace:
+          root: ~/cucumber
+          paths:
+            - json-to-messages/python-testdata/acceptance
+
+  gherkin-python-2:
+    executor: docker-circleci-python
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: gherkin/python
+          command: |
+            cd gherkin/python
+            make GHERKIN_PYTHON_VERSION=python2
+
+  gherkin-python-3:
+    executor: docker-circleci-python
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: gherkin/python
+          command: |
+            cd gherkin/python
+            make
+
+  ### C
+
+  gherkin-c:
+    executor: docker-cucumber-build
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: gherkin/c
+          command: |
+            cd gherkin/c
+            make
+
+  ### Elixir
+
+  messages-elixir:
+    executor: docker-cucumber-build
+    steps:
+      - attach_workspace:
+          at: '~/cucumber'
+      - run:
+          name: messages/elixir
+          command: |
+            cd messages/elixir
+            make
+      - persist_to_workspace:
+          root: ~/cucumber
+          paths:
+            - messages/elixir/lib/cucumber_messages/generated/
+
+  # gherkin-elixir:
+  #   executor: docker-cucumber-build
+  #   steps:
+  #     - attach_workspace:
+  #         at: "~/cucumber"
+  #     - run:
+  #         name: gherkin/elixir
+  #         command: |
+  #           cd gherkin/elixir
+  #           make
+
+###
+### Workflows ###
+###
+
+workflows:
+  version: 2
+
+  monorepo-nightly:
+    triggers:
+      - schedule:
+          cron: '0 5 * * *'
+          filters:
+            branches:
+              only:
+                - main
+
+    jobs:
+      - build-serial
+
+  monorepo-serial:
+    jobs:
+      - build-serial:
+          # Explicitly enable build for tags. Needed to sync tags to subrepos.
+          filters:
+            tags:
+              only: /.*/
+
+  monorepo-parallel:
+    jobs:
+      - prepare-parallel
+
+      ### Go
+
+      - messages-go:
+          requires:
+            - prepare-parallel
+      - gherkin-go:
+          requires:
+            - messages-go
+      - demo-formatter-go:
+          requires:
+            - messages-go
+      - json-formatter-go:
+          requires:
+            - messages-go
+            - json-formatter-ruby-testdata
+            - json-formatter-javascript-testdata
+
+      ### JavaScript
+
+      - message-streams-javascript:
+          requires:
+            - prepare-parallel
+      - messages-javascript:
+          requires:
+            - prepare-parallel
+      - gherkin-streams-javascript:
+          requires:
+            - prepare-parallel
+      - gherkin-javascript-node-12:
+          requires:
+            - prepare-parallel
+      - gherkin-javascript-node-14:
+          requires:
+            - prepare-parallel
+      - gherkin-javascript-node-16:
+          requires:
+            - prepare-parallel
+      - gherkin-utils-javascript:
+          requires:
+            - prepare-parallel
+      - fake-cucumber-javascript:
+          requires:
+            - prepare-parallel
+      - compatibility-kit-javascript:
+          requires:
+            - prepare-parallel
+      - react-javascript:
+          requires:
+            - prepare-parallel
+      - html-formatter-javascript:
+          requires:
+            - react-javascript
+            - messages-javascript
+            - gherkin-utils-javascript
+            - compatibility-kit-javascript
+      - json-formatter-javascript-testdata:
+          requires:
+            - json-formatter-ruby-testdata
+            - fake-cucumber-javascript
+      - query-javascript:
+          requires:
+            - prepare-parallel
+      - json-to-messages-javascript-testdata:
+          requires:
+            - prepare-parallel
+            - json-to-messages-ruby-testdata
+      - json-to-messages-javascript:
+          requires:
+            - prepare-parallel
+            - json-to-messages-ruby-testdata
+            - json-to-messages-java-testdata
+            - json-to-messages-python-testdata
+            - json-to-messages-javascript-testdata
+            - fake-cucumber-javascript
+            - gherkin-javascript-node-14
+            - gherkin-utils-javascript
+            - html-formatter-javascript
+
+      ### Ruby
+
+      - messages-ruby:
+          requires:
+            - prepare-parallel
+      - gherkin-ruby-23:
+          requires:
+            - messages-ruby
+      - gherkin-ruby-24:
+          requires:
+            - messages-ruby
+      - gherkin-ruby-25:
+          requires:
+            - messages-ruby
+      - gherkin-ruby-26:
+          requires:
+            - messages-ruby
+      - demo-formatter-ruby:
+          requires:
+            - messages-ruby
+      - compatibility-kit-ruby:
+          requires:
+            - messages-ruby
+      - json-formatter-ruby-testdata:
+          requires:
+            - prepare-parallel
+      - html-formatter-ruby:
+          requires:
+            - html-formatter-javascript
+            - messages-ruby
+            - compatibility-kit-javascript
+      - json-to-messages-ruby-testdata:
+          requires:
+            - prepare-parallel
+
+      ### Java
+
+      - messages-java:
+          requires:
+            - prepare-parallel
+      - gherkin-java:
+          requires:
+            - messages-java
+      - config-java:
+          requires:
+            - prepare-parallel
+      - html-formatter-java:
+          requires:
+            - html-formatter-javascript
+            - messages-java
+            - compatibility-kit-javascript
+      - json-to-messages-java-testdata:
+          requires:
+            - prepare-parallel
+            - json-to-messages-ruby-testdata
+
+      ### .NET
+
+      - messages-dotnet:
+          requires:
+            - prepare-parallel
+
+      - gherkin-dotnet:
+          requires:
+            - prepare-parallel
+
+      ## Perl
+
+      - gherkin-perl:
+          requires:
+            - prepare-parallel
+
+      - messages-perl:
+          requires:
+            - prepare-parallel
+
+      ## Python
+
+      - json-to-messages-python-testdata:
+          requires:
+            - prepare-parallel
+            - json-to-messages-ruby-testdata
+
+      - gherkin-python-2:
+          requires:
+            - prepare-parallel
+
+      - gherkin-python-3:
+          requires:
+            - prepare-parallel
+
+      ### C
+
+      - gherkin-c:
+          requires:
+            - prepare-parallel
+
+      ### Elixir
+
+      - messages-elixir:
+          requires:
+            - prepare-parallel
+
+      # - gherkin-elixir:
+      #     requires:
+      #       - messages-elixir
